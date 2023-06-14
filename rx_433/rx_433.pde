@@ -38,11 +38,9 @@ void imprimirMensaje(uint8_t buf[VW_MAX_MESSAGE_LEN], int secuencia) {
 
       // =========== MENSAJE ===========
       char mensaje[8];
-      for (int i = 0; i < 7; i++) {
-        mensaje[i] = (char)buf[i + 9];
+      for (int i = 0; i < 8; i++) {
+        mensaje[i] = buf[i + 8];
       }
-      mensaje[7] = '\0';
-
       // =========== MENSAJE ===========
       // Imprimimos el mensaje
       Serial.print(secuencia);
@@ -60,30 +58,54 @@ boolean calcularCRC(uint8_t message[VW_MAX_MESSAGE_LEN]) {
   // - Se hará CRC al mensaje message[9..16]
   // - Se asignará el resultado a CRC[0..1]
   // Inicializamos el CRC en 0
-  uint16_t crc = 0;
-  // - El primer for recorre los 8 bytes del mensaje
-  for (int i = 9; i < 16; i++) {
-    crc ^= message[i];
-    // - El segundo for recorre los 8 bits de cada byte
-    for (int j = 0; j < 8; j++) {
-      if (crc & 0x80) {
-        crc = (crc << 1) ^ 0x05;
-      } else {
-        crc <<= 1;
-      }
+
+  // Conseguimos todos los binarios del mensaje [8..15]
+  uint8_t binarios[64];
+  // Dejamos los bits ordenados de izquierda a derecha
+  for (int i = 0; i < 8; i++) {
+    for (int bit = 0; bit < 8; bit++) {
+      binarios[i*8+bit] = (message[i+8] >> (7-bit)) & 0x01;
     }
   }
 
-  // Almacenamos CRC en CRC[0..1]
-  CRC[0] = crc;
-  CRC[1] = crc >> 8;
+  // CODIGO EXTRAÍDO DESDE
+  // https://www.ghsi.de/pages/subpages/Online%20CRC%20Calculation/index.php?Polynom=100101&Message=4720303900000047
+
+  char Res[6];                                 // CRC Result
+  char CRCIMP[5];
+  int  i;
+  char DoInvert;
+
+  for (i=0; i<5; ++i)  CRCIMP[i] = 0;                    // Init before calculation
+
+  for (i=0; i<64; ++i)
+    {
+    DoInvert = (binarios[i] == 1) ^ CRCIMP[4];         // XOR required?
+
+    CRCIMP[4] = CRCIMP[3];
+    CRCIMP[3] = CRCIMP[2];
+    CRCIMP[2] = CRCIMP[1] ^ DoInvert;
+    CRCIMP[1] = CRCIMP[0];
+    CRCIMP[0] = DoInvert;
+    }
+
+  for (i=0; i<5; ++i)  Res[4-i] = CRCIMP[i] ? '1' : '0'; // Convert binary to ASCII
+  Res[5] = 0;                                         // Set string terminator
+
+  Serial.println(Res);
+
+  // Asignamos el valor binario a CRC en message[5]
+  // message[5] almacenará los 5 bits de CRC
+  for (int i = 0; i < 5; i++) {
+    CRC[1] += (Res[i] - '0') << (4-i);
+  }
 
   // Verificamos el CRC calculado, con el de buf[4..5]
   // - Si son iguales, entonces el mensaje es correcto
   // - Si son diferentes, entonces el mensaje es incorrecto
 
   if (CRC[0] == message[4] && CRC[1] == message[5]) {
-    // Serial.println("CRC correcto");
+    Serial.println("CRC correcto");
     return true;
   } else {
     return false;
@@ -106,19 +128,15 @@ void loop() {
       // =========== CRC ===========
       // CRC tiene 2 bytes [4..5]
       boolean crcCorrecto = calcularCRC(buf);
-      if (!crcCorrecto) {
-        Serial.println("CRC incorrecto (mensaje descartado)");
-        return;
-      }
+      // if (!crcCorrecto) {
+      //   Serial.println("CRC incorrecto (mensaje descartado)");
+      //   return;
+      // }
 
       // =========== SECUENCIA ===========
-      // Secuencia tiene 2 bytes
-      // Imprimimos Secuencia [6..7] y 'Mensaje recibido'
-      int secuencia = buf[6] * 256 + buf[7];
-
       // =========== PAQUETES_RECIBIDOS =========
       // =========== MENSAJE ===========
-      imprimirMensaje(buf, secuencia);
+      imprimirMensaje(buf, buf[6]);
     }
     else {
       Serial.println("Origen o Destino incorrecto");
