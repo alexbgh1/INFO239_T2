@@ -30,17 +30,23 @@ void setup() {
   vw_rx_start();
 
   pinMode(13, OUTPUT);  // Configurar el pin 13 como salida para indicar la recepción de mensajes
-
 }
 
 // Función que imprime el mensaje
 void imprimirMensaje(uint8_t buf[VW_MAX_MESSAGE_LEN], int secuencia) {
 
       // =========== MENSAJE ===========
-      char mensaje[8];
+      char mensaje[9];
       for (int i = 0; i < 8; i++) {
-        mensaje[i] = buf[i + 8];
+
+        if (buf[i + 8] == '\0') {
+          // Empty character
+          mensaje[i] = ' ';
+        } else {
+          mensaje[i] = buf[i + 8];
+        }
       }
+      mensaje[8] = '\0';
       // =========== MENSAJE ===========
       // Imprimimos el mensaje
       Serial.print(secuencia);
@@ -48,8 +54,6 @@ void imprimirMensaje(uint8_t buf[VW_MAX_MESSAGE_LEN], int secuencia) {
       Serial.print(mensaje);
 
       Serial.println();
-
-      digitalWrite(13, LOW);  // Apagar el LED o indicador
 }
 
 boolean calcularCRC(uint8_t message[VW_MAX_MESSAGE_LEN]) {
@@ -92,8 +96,6 @@ boolean calcularCRC(uint8_t message[VW_MAX_MESSAGE_LEN]) {
   for (i=0; i<5; ++i)  Res[4-i] = CRCIMP[i] ? '1' : '0'; // Convert binary to ASCII
   Res[5] = 0;                                         // Set string terminator
 
-  Serial.println(Res);
-
   // Asignamos el valor binario a CRC en message[5]
   // message[5] almacenará los 5 bits de CRC
   for (int i = 0; i < 5; i++) {
@@ -104,6 +106,8 @@ boolean calcularCRC(uint8_t message[VW_MAX_MESSAGE_LEN]) {
   // - Si son iguales, entonces el mensaje es correcto
   // - Si son diferentes, entonces el mensaje es incorrecto
 
+  Serial.print("CRC: ");
+  Serial.println(CRC[1], BIN);
   if (CRC[0] == message[4] && CRC[1] == message[5]) {
     Serial.println("CRC correcto");
     return true;
@@ -128,15 +132,21 @@ void loop() {
       // =========== CRC ===========
       // CRC tiene 2 bytes [4..5]
       boolean crcCorrecto = calcularCRC(buf);
-      // if (!crcCorrecto) {
-      //   Serial.println("CRC incorrecto (mensaje descartado)");
-      //   return;
-      // }
+      // =========== RESET CRC ===========
+      CRC[0] = 0b00000000;
+      CRC[1] = 0b00000000;
+
+      if (!crcCorrecto) {
+        Serial.println("CRC incorrecto (mensaje descartado)");
+        return;
+      }
 
       // =========== SECUENCIA ===========
       // =========== PAQUETES_RECIBIDOS =========
       // =========== MENSAJE ===========
       imprimirMensaje(buf, buf[6]);
+      delay(300);
+      digitalWrite(13, LOW);  // Apagar el LED o indicador 
     }
     else {
       Serial.println("Origen o Destino incorrecto");

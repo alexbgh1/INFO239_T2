@@ -22,20 +22,16 @@ uint8_t CRC[2] = {0b00000000, 0b00000000}; // DEFAULT: 0
 uint8_t secuencia = 0b00000001; // DEFAULT: 1, Corresponde a "i" veces hasta "TOTAL_PAQUETES"
 uint8_t TOTAL_PAQUETES = 0b00000101; // DEFAULT: Se envia 5 veces
 uint8_t MENSAJE[8] = {  // "G 09": 01000111 00100000 00110000 00111001
+  0b00000000, // ""
+  0b00000000, // ""
+  0b00000000, // ""
+  0b00000000, // ""
   0b01000111, // "G"
   0b00100000, // " "
   0b00110000, // "0"
   0b00111001, // "9"  // "2" 00110010
-  0b00000000, // ""
-  0b00000000, // ""
-  0b00000000, // ""
-  0b01000111, // ""
-  // 0b01100001, // "a"
-  // 0b01100001, // "a"
-  // 0b01100001, // "a"
-  // 0b01100001, // "a"
 };
-//0100011100100000001100000011100100000000000000000000000001000111
+//0000000000000000000000000000000001000111001000000011000000111001
 
 void setup() {
   vw_set_ptt_inverted(true);
@@ -93,6 +89,12 @@ void calcularCRC() {
     }
   }
 
+  // // Mostramos los binarios
+  // Serial.println("Binarios: ");
+  // for (int i = 0; i < 64; i++) {
+  //   Serial.print(binarios[i]);
+  // }
+
   // CODIGO EXTRAÍDO DESDE
   // https://www.ghsi.de/pages/subpages/Online%20CRC%20Calculation/index.php?Polynom=100101&Message=4720303900000047
 
@@ -100,7 +102,7 @@ void calcularCRC() {
   char CRCIMP[5];
   int  i;
   char DoInvert;
-
+  
   for (i=0; i<5; ++i)  CRCIMP[i] = 0;                    // Init before calculation
 
   for (i=0; i<64; ++i)
@@ -114,6 +116,10 @@ void calcularCRC() {
     CRCIMP[0] = DoInvert;
     }
 
+  // Serial.print("CRCIMP: ");
+  // Serial.println(CRCIMP);
+
+
   for (i=0; i<5; ++i)  Res[4-i] = CRCIMP[i] ? '1' : '0'; // Convert binary to ASCII
   Res[5] = 0;                                         // Set string terminator
 
@@ -122,7 +128,7 @@ void calcularCRC() {
   // Asignamos el valor binario a CRC en message[5]
   // message[5] almacenará los 5 bits de CRC
   for (int i = 0; i < 5; i++) {
-    message[4] += (Res[i] - '0') << (4-i);
+    message[5] += (Res[i] - '0') << (4-i);
   }
 }
 
@@ -147,6 +153,9 @@ void loop() {
     delay(1000);
     // =========== SECUENCIA ===========
     aumentaSecuencia(); // secuencia++
+    // =========== RESET CRC ===========
+    message[4] = CRC[0];
+    message[5] = CRC[1];
   }
 
   // ======== RESET SECUENCIA =========
