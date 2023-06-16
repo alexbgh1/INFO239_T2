@@ -125,10 +125,10 @@ void loop() {
     digitalWrite(13, HIGH);  // Encender el LED o indicador para indicar la recepción de mensajes
 
     // Solo aceptamos:
-    // - Mensajes con ORIGEN/DESTINO: ENVIO: 00/00 LOCAL: 00/00
-    // - Mensajes con ORIGEN/DESTINO: ENVIO: 09/09 LOCAL: 09/09
+    // - Mensajes con DESTINO: ENVIO: 0X/00 LOCAL: 00/00
+    // - Mensajes con ORIGEN/DESTINO: ENVIO: 0X/09 LOCAL: 0X/09
     
-    if(((buf[0] == 0 && buf[1] == 0) && (buf[2] == 0 && buf[3] == 0)) || ((buf[0] == ORIGEN[0] && buf[1] == ORIGEN[1]) && (buf[2] == DESTINO[0] && buf[3] == DESTINO[1])) ){
+    if(( (buf[2] == 0 && buf[3] == 0)) || ( (buf[2] == DESTINO[0] && buf[3] == DESTINO[1])) ){
       // =========== CRC ===========
       // CRC tiene 2 bytes [4..5]
       boolean crcCorrecto = calcularCRC(buf);
